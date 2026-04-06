@@ -116,21 +116,21 @@ export default function NovoOrcamento({
             placeholder="Nome do Orçamento"
             value={formData.nome}
             onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
           />
           <input
             type="text"
             placeholder="Nome do Cliente"
             value={formData.cliente}
             onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
           />
           <input
             type="text"
             placeholder="Endereço"
             value={formData.endereco}
             onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
-            className="col-span-2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="col-span-2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
           />
           <input
             type="number"
@@ -138,12 +138,12 @@ export default function NovoOrcamento({
             step="0.01"
             value={formData.metragem}
             onChange={(e) => setFormData({ ...formData, metragem: parseFloat(e.target.value) })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
           />
           <select
             value={formData.tipoTrabalho}
             onChange={(e) => setFormData({ ...formData, tipoTrabalho: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800"
           >
             <option value="revestimento">Revestimento</option>
             <option value="forro">Forro</option>
@@ -158,7 +158,7 @@ export default function NovoOrcamento({
             step="0.1"
             value={formData.deslocamento}
             onChange={(e) => setFormData({ ...formData, deslocamento: parseFloat(e.target.value) })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
           />
         </div>
 
@@ -177,7 +177,7 @@ export default function NovoOrcamento({
               <select
                 value={selectedMaterial}
                 onChange={(e) => setSelectedMaterial(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800"
               >
                 {precosConfig.materiais.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -192,7 +192,7 @@ export default function NovoOrcamento({
                 step="0.01"
                 value={quantidadeItem}
                 onChange={(e) => setQuantidadeItem(parseFloat(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
               />
               {materialSelecionado && (
                 <p className="text-sm text-gray-600">

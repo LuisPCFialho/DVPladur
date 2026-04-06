@@ -69,7 +69,7 @@ export default function PrecosPanel() {
             onChange={(e) =>
               handleChangePrecosConfig('dimensaoPadraoPlaca', parseFloat(e.target.value))
             }
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-400"
           />
         </div>
 
@@ -85,7 +85,7 @@ export default function PrecosPanel() {
               onChange={(e) =>
                 handleChangePrecosConfig('precoMaoDeObra', parseFloat(e.target.value))
               }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-400"
             />
           </div>
 
@@ -98,7 +98,7 @@ export default function PrecosPanel() {
               step="0.01"
               value={precosConfig.margem}
               onChange={(e) => handleChangePrecosConfig('margem', parseFloat(e.target.value))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-400"
             />
           </div>
 
@@ -113,7 +113,7 @@ export default function PrecosPanel() {
               onChange={(e) =>
                 handleChangePrecosConfig('precoKmDeslocamento', parseFloat(e.target.value))
               }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-400"
             />
           </div>
         </div>
@@ -141,12 +141,12 @@ export default function PrecosPanel() {
               placeholder="Nome do Material"
               value={formData.nome}
               onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
             />
             <select
               value={formData.unidade}
               onChange={(e) => setFormData({ ...formData, unidade: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
             >
               <option value="m2">m²</option>
               <option value="m">m</option>
@@ -160,7 +160,7 @@ export default function PrecosPanel() {
               step="0.01"
               value={formData.preco}
               onChange={(e) => setFormData({ ...formData, preco: parseFloat(e.target.value) })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
             />
             <div className="flex gap-2">
               <button

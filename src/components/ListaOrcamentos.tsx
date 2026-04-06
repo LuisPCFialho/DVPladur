@@ -45,7 +45,7 @@ export default function ListaOrcamentos({
                 type="text"
                 value={novoNome}
                 onChange={(e) => setNovoNome(e.target.value)}
-                className="flex-1 px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
                 autoFocus
               />
               <button
