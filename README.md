@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DVPladur - Sistema de Orçamentos Pladur
 
-## Getting Started
+Sistema de gestão de orçamentos para montadores de pladur, desenvolvido com Next.js 16, TypeScript e Tailwind CSS 4.
 
-First, run the development server:
+## Links do Projeto
+
+- **Site em Produção**: https://orcamento-pladur.vercel.app
+- **Repositório GitHub**: https://github.com/LuisPCFialho/DVPladur
+
+## Funcionalidades
+
+- ✅ Gestão de preços de materiais configuráveis
+- ✅ Criação de orçamentos com cálculo automático
+- ✅ Histórico de orçamentos (rascunhos e finalizados)
+- ✅ Cálculo de mão-de-obra por m²
+- ✅ Cálculo de deslocamento por km
+- ✅ Margem de lucro configurável
+- ✅ Persistência de dados com localStorage (sem necessidade de backend)
+- ✅ Interface em português
+- ✅ Design responsivo
+
+## Tipos de Trabalho Suportados
+
+- Revestimento
+- Forro
+- Cofragem
+- Divisória Interior
+- Parede Exterior
+- Parede com Humidade
+
+## Materiais Pré-configurados
+
+1. Placa de Pladur Standard
+2. Placa de Pladur Resistente à Humidade
+3. Estrutura Metálica (Montantes)
+4. Estrutura Metálica (Guias)
+5. Parafusos (Caixa)
+6. Massa de Pladur
+7. Primer
+8. Tinta
+
+## Tecnologias Utilizadas
+
+- **Framework**: Next.js 16 (App Router)
+- **Linguagem**: TypeScript
+- **Estilização**: Tailwind CSS 4
+- **Estado Global**: Zustand com persistência localStorage
+- **Deployment**: Vercel
+- **Icons**: Heroicons (via SVG)
+
+## Como Usar
+
+### Online (Recomendado)
+Aceda diretamente a: https://orcamento-pladur.vercel.app
+
+### Desenvolvimento Local
 
 ```bash
+# Clonar o repositório
+git clone https://github.com/LuisPCFialho/DVPladur.git
+cd DVPladur
+
+# Instalar dependências
+npm install
+
+# Executar em modo de desenvolvimento
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Abrir no navegador
+# http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Cálculos Automáticos
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+O sistema calcula automaticamente:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Custo de Materiais**: Soma de todos os materiais × quantidades
+- **Mão-de-obra**: Metragem (m²) × Preço/m²
+- **Deslocamento**: Distância (km) × Preço/km
+- **Subtotal**: Materiais + Mão-de-obra + Deslocamento
+- **Lucro**: Subtotal × Margem (%)
+- **Preço Final**: Subtotal + Lucro
 
-## Learn More
+## Persistência de Dados
 
-To learn more about Next.js, take a look at the following resources:
+Os dados são guardados automaticamente no **localStorage** do navegador:
+- Configuração de preços
+- Materiais personalizados
+- Histórico de orçamentos
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Nota**: Os dados ficam guardados apenas no navegador utilizado.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Desenvolvido para profissionais de pladur**
