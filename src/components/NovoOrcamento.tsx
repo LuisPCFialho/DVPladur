@@ -1,287 +1,483 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
-import { Orcamento, ItemOrcamento } from '@/types';
+import { Orcamento, ItemOrcamento, TIPOS_TRABALHO } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
+
+const labelCls = 'block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide';
+const inputCls = 'w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition';
+const sectionCls = 'bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3';
 
 export default function NovoOrcamento({
   onClose,
   onSave,
+  orcamentoExistente,
 }: {
   onClose: () => void;
   onSave: (orcamento: Orcamento) => void;
+  orcamentoExistente?: Orcamento | null;
 }) {
-  const { precosConfig } = useStore();
+  const { precosConfig, clientes, nextNumeroOrcamento } = useStore();
 
-  const [formData, setFormData] = useState({
-    nome: '',
-    cliente: '',
-    endereco: '',
-    metragem: 0,
-    tipoTrabalho: 'revestimento',
-    deslocamento: 0,
+  const addDays = (days: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split('T')[0];
+  };
+
+  const [form, setForm] = useState({
+    nome: orcamentoExistente?.nome ?? '',
+    clienteId: orcamentoExistente?.clienteId ?? '',
+    cliente: orcamentoExistente?.cliente ?? '',
+    nifCliente: orcamentoExistente?.nifCliente ?? '',
+    telefoneCliente: orcamentoExistente?.telefoneCliente ?? '',
+    emailCliente: orcamentoExistente?.emailCliente ?? '',
+    enderecoObra: orcamentoExistente?.enderecoObra ?? '',
+    data: orcamentoExistente?.data ?? new Date().toISOString().split('T')[0],
+    validadeAte: orcamentoExistente?.validadeAte ?? addDays(30),
+    prazoExecucao: orcamentoExistente?.prazoExecucao ?? '',
+    metragem: orcamentoExistente?.metragem ?? 0,
+    tipoTrabalho: orcamentoExistente?.tipoTrabalho ?? 'divisoria',
+    fatorDesperdicio: orcamentoExistente?.fatorDesperdicio ?? 10,
+    taxaIVA: orcamentoExistente?.taxaIVA ?? 6,
+    deslocamento: orcamentoExistente?.deslocamento ?? 0,
+    notas: orcamentoExistente?.notas ?? '',
   });
 
-  const [itens, setItens] = useState<ItemOrcamento[]>([]);
+  const [itens, setItens] = useState<ItemOrcamento[]>(orcamentoExistente?.itens ?? []);
+  const [selMat, setSelMat] = useState(precosConfig.materiais[0]?.id ?? '');
+  const [qty, setQty] = useState(1);
   const [showAddItem, setShowAddItem] = useState(false);
-  const [selectedMaterial, setSelectedMaterial] = useState<string>(
-    precosConfig.materiais[0]?.id || ''
-  );
-  const [quantidadeItem, setQuantidadeItem] = useState(1);
+  const [err, setErr] = useState('');
+
+  const setF = (k: string, v: string | number) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleAutoCalc = () => {
+    const consumos = precosConfig.rendimentos?.[form.tipoTrabalho];
+    if (!consumos || consumos.length === 0 || form.metragem <= 0) return;
+    const fator = 1 + (form.fatorDesperdicio || 0) / 100;
+    const novosItens: ItemOrcamento[] = consumos
+      .map((c) => {
+        const mat = precosConfig.materiais.find((m) => m.id === c.materialId);
+        if (!mat) return null;
+        const qtd = Math.ceil(c.rendimento * form.metragem * fator * 100) / 100;
+        return {
+          id: uuidv4(),
+          materialId: mat.id,
+          descricao: mat.nome,
+          unidade: mat.unidade,
+          quantidade: qtd,
+          preco: mat.preco,
+          subtotal: mat.preco * qtd,
+        } as ItemOrcamento;
+      })
+      .filter(Boolean) as ItemOrcamento[];
+    if (itens.length > 0 && !confirm('Substituir os materiais actuais pelo cálculo automático?')) return;
+    setItens(novosItens);
+  };
+
+  const hasRendimentos = !!(precosConfig.rendimentos?.[form.tipoTrabalho]?.length);
+
+  const handleClienteSelect = (id: string) => {
+    if (!id) {
+      setF('clienteId', '');
+      return;
+    }
+    const c = clientes.find((c) => c.id === id);
+    if (c) {
+      setForm((f) => ({
+        ...f,
+        clienteId: c.id,
+        cliente: c.nome,
+        nifCliente: c.nif,
+        telefoneCliente: c.telefone,
+        emailCliente: c.email,
+      }));
+    }
+  };
 
   const handleAddItem = () => {
-    const material = precosConfig.materiais.find((m) => m.id === selectedMaterial);
-    if (!material) return;
-
-    const novoItem: ItemOrcamento = {
+    const mat = precosConfig.materiais.find((m) => m.id === selMat);
+    if (!mat || qty <= 0) return;
+    const item: ItemOrcamento = {
       id: uuidv4(),
-      materialId: material.id,
-      quantidade: quantidadeItem,
-      preco: material.preco,
-      subtotal: material.preco * quantidadeItem,
+      materialId: mat.id,
+      descricao: mat.nome,
+      unidade: mat.unidade,
+      quantidade: qty,
+      preco: mat.preco,
+      subtotal: mat.preco * qty,
     };
-
-    setItens([...itens, novoItem]);
-    setQuantidadeItem(1);
+    setItens((prev) => [...prev, item]);
+    setQty(1);
     setShowAddItem(false);
   };
 
-  const handleRemoveItem = (id: string) => {
-    setItens(itens.filter((item) => item.id !== id));
-  };
-
-  const calcularTotais = () => {
-    const custoMateriais = itens.reduce((sum, item) => sum + item.subtotal, 0);
-    const maoDeObraTotal = formData.metragem * precosConfig.precoMaoDeObra;
-    const custoDeslocamento = formData.deslocamento * precosConfig.precoKmDeslocamento;
-
-    const precoAntesDaMargemLucro = custoMateriais + maoDeObraTotal + custoDeslocamento;
+  const calcular = () => {
+    const subtotalMateriais = itens.reduce((s, i) => s + i.subtotal, 0);
+    const maoDeObraTotal = form.metragem * precosConfig.precoMaoDeObra;
+    const custoDeslocamento = form.deslocamento * precosConfig.precoKmDeslocamento;
+    const precoAntesDaMargemLucro = subtotalMateriais + maoDeObraTotal + custoDeslocamento;
     const valorLucrado = (precoAntesDaMargemLucro * precosConfig.margem) / 100;
-    const precoLiquidoCliente = precoAntesDaMargemLucro + valorLucrado;
-
+    const precoSemIVA = precoAntesDaMargemLucro + valorLucrado;
+    const valorIVA = (precoSemIVA * form.taxaIVA) / 100;
+    const precoComIVA = precoSemIVA + valorIVA;
     return {
-      custoMateriais,
-      maoDeObraTotal,
-      custoDeslocamento,
-      precoAntesDaMargemLucro,
-      valorLucrado,
-      precoLiquidoCliente,
+      subtotalMateriais, maoDeObraTotal, custoDeslocamento,
+      precoAntesDaMargemLucro, valorLucrado, precoSemIVA, valorIVA, precoComIVA,
     };
   };
 
   const handleSave = () => {
-    if (!formData.nome || !formData.cliente || formData.metragem <= 0 || itens.length === 0) {
-      alert('Por favor preencha todos os campos e adicione pelo menos um material');
-      return;
-    }
+    if (!form.nome) { setErr('Indique um nome para o orçamento.'); return; }
+    if (!form.cliente) { setErr('Indique o nome do cliente.'); return; }
+    if (form.metragem <= 0) { setErr('Indique a metragem da obra.'); return; }
+    if (itens.length === 0) { setErr('Adicione pelo menos um material.'); return; }
+    setErr('');
 
-    const totais = calcularTotais();
+    const totais = calcular();
+    const numero = orcamentoExistente?.numero ?? nextNumeroOrcamento();
 
     const orcamento: Orcamento = {
-      id: uuidv4(),
-      nome: formData.nome,
-      cliente: formData.cliente,
-      endereco: formData.endereco,
-      data: new Date().toISOString().split('T')[0],
-      metragem: formData.metragem,
-      tipoTrabalho: formData.tipoTrabalho,
+      id: orcamentoExistente?.id ?? uuidv4(),
+      numero,
+      nome: form.nome,
+      clienteId: form.clienteId || null,
+      cliente: form.cliente,
+      nifCliente: form.nifCliente,
+      telefoneCliente: form.telefoneCliente,
+      emailCliente: form.emailCliente,
+      enderecoObra: form.enderecoObra,
+      data: form.data,
+      validadeAte: form.validadeAte,
+      prazoExecucao: form.prazoExecucao,
+      metragem: form.metragem,
+      tipoTrabalho: form.tipoTrabalho,
+      fatorDesperdicio: form.fatorDesperdicio,
+      taxaIVA: form.taxaIVA,
       itens,
       maoDeObraTotal: totais.maoDeObraTotal,
-      deslocamento: formData.deslocamento,
+      deslocamento: form.deslocamento,
       custoDeslocamento: totais.custoDeslocamento,
+      subtotalMateriais: totais.subtotalMateriais,
       precoAntesDaMargemLucro: totais.precoAntesDaMargemLucro,
       percentagemMargemLucro: precosConfig.margem,
       valorLucrado: totais.valorLucrado,
-      precoLiquidoCliente: totais.precoLiquidoCliente,
-      status: 'rascunho',
-      criadoEm: new Date().toISOString(),
+      precoSemIVA: totais.precoSemIVA,
+      valorIVA: totais.valorIVA,
+      precoComIVA: totais.precoComIVA,
+      precoLiquidoCliente: totais.precoComIVA,
+      status: orcamentoExistente?.status ?? 'rascunho',
+      notas: form.notas,
+      criadoEm: orcamentoExistente?.criadoEm ?? new Date().toISOString(),
       atualizadoEm: new Date().toISOString(),
     };
 
     onSave(orcamento);
   };
 
-  const totais = calcularTotais();
-  const materialSelecionado = precosConfig.materiais.find((m) => m.id === selectedMaterial);
+  const t = calcular();
+  const matSel = precosConfig.materiais.find((m) => m.id === selMat);
+  const categorias = [...new Set(precosConfig.materiais.map((m) => m.categoria))];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800">Novo Orçamento</h2>
-
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <input
-            type="text"
-            placeholder="Nome do Orçamento"
-            value={formData.nome}
-            onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
-          />
-          <input
-            type="text"
-            placeholder="Nome do Cliente"
-            value={formData.cliente}
-            onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
-          />
-          <input
-            type="text"
-            placeholder="Endereço"
-            value={formData.endereco}
-            onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
-            className="col-span-2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
-          />
-          <input
-            type="number"
-            placeholder="Metragem (m²)"
-            step="0.01"
-            value={formData.metragem}
-            onChange={(e) => setFormData({ ...formData, metragem: parseFloat(e.target.value) })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
-          />
-          <select
-            value={formData.tipoTrabalho}
-            onChange={(e) => setFormData({ ...formData, tipoTrabalho: e.target.value })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800"
-          >
-            <option value="revestimento">Revestimento</option>
-            <option value="forro">Forro</option>
-            <option value="cofagem">Cofragem</option>
-            <option value="divisoria">Divisória Interior</option>
-            <option value="parede-exterior">Parede Exterior</option>
-            <option value="humidade">Parede com Humidade</option>
-          </select>
-          <input
-            type="number"
-            placeholder="Deslocamento (km)"
-            step="0.1"
-            value={formData.deslocamento}
-            onChange={(e) => setFormData({ ...formData, deslocamento: parseFloat(e.target.value) })}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
-          />
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[95vh] flex flex-col shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-slate-200">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">
+              {orcamentoExistente ? 'Editar Orçamento' : 'Novo Orçamento'}
+            </h2>
+            {orcamentoExistente && (
+              <p className="text-xs text-slate-500 mt-0.5">{orcamentoExistente.numero}</p>
+            )}
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        <h3 className="text-lg font-bold mb-4 text-gray-800">Materiais</h3>
-
-        {!showAddItem ? (
-          <button
-            onClick={() => setShowAddItem(true)}
-            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition mb-4"
-          >
-            + Adicionar Material
-          </button>
-        ) : (
-          <div className="bg-gray-50 p-4 rounded-lg mb-4 border border-gray-300">
-            <div className="space-y-3">
-              <select
-                value={selectedMaterial}
-                onChange={(e) => setSelectedMaterial(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800"
-              >
-                {precosConfig.materiais.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.nome} ({m.preco.toFixed(2)}€/{m.unidade})
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                placeholder="Quantidade"
-                min="0.01"
-                step="0.01"
-                value={quantidadeItem}
-                onChange={(e) => setQuantidadeItem(parseFloat(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400"
-              />
-              {materialSelecionado && (
-                <p className="text-sm text-gray-600">
-                  Subtotal: {(materialSelecionado.preco * quantidadeItem).toFixed(2)}€
-                </p>
-              )}
-              <div className="flex gap-2">
-                <button
-                  onClick={handleAddItem}
-                  className="flex-1 bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition"
-                >
-                  Adicionar
-                </button>
-                <button
-                  onClick={() => setShowAddItem(false)}
-                  className="flex-1 bg-gray-500 text-white px-3 py-2 rounded-lg hover:bg-gray-600 transition"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-2 mb-6">
-          {itens.map((item) => {
-            const material = precosConfig.materiais.find((m) => m.id === item.materialId);
-            return (
-              <div key={item.id} className="bg-gray-50 p-3 rounded-lg border border-gray-300">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-semibold text-gray-800">{material?.nome}</p>
-                    <p className="text-sm text-gray-600">
-                      {item.quantidade} {material?.unidade} x {item.preco.toFixed(2)}€ ={' '}
-                      {item.subtotal.toFixed(2)}€
-                    </p>
+        {/* Body */}
+        <div className="flex-1 overflow-auto p-5">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {/* Left column */}
+            <div className="lg:col-span-2 space-y-5">
+              {/* Info básica */}
+              <div className={sectionCls}>
+                <h3 className="text-sm font-bold text-slate-700 pb-1 border-b border-slate-200">Informação do Orçamento</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className={labelCls}>Nome do Orçamento</label>
+                    <input className={inputCls} value={form.nome} onChange={(e) => setF('nome', e.target.value)} placeholder="Ex: Moradia Rua das Flores" />
                   </div>
-                  <button
-                    onClick={() => handleRemoveItem(item.id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition text-sm"
-                  >
-                    Remover
-                  </button>
+                  <div>
+                    <label className={labelCls}>Data</label>
+                    <input type="date" className={inputCls} value={form.data} onChange={(e) => setF('data', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Válido até</label>
+                    <input type="date" className={inputCls} value={form.validadeAte} onChange={(e) => setF('validadeAte', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Prazo de Execução</label>
+                    <input className={inputCls} value={form.prazoExecucao} onChange={(e) => setF('prazoExecucao', e.target.value)} placeholder="Ex: 5 dias úteis" />
+                  </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
 
-        <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-300">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-gray-600">Mão-de-obra:</p>
-              <p className="font-bold text-lg">{totais.maoDeObraTotal.toFixed(2)}€</p>
+              {/* Cliente */}
+              <div className={sectionCls}>
+                <h3 className="text-sm font-bold text-slate-700 pb-1 border-b border-slate-200">Cliente</h3>
+                {clientes.length > 0 && (
+                  <div>
+                    <label className={labelCls}>Selecionar cliente guardado</label>
+                    <select
+                      className={inputCls}
+                      value={form.clienteId}
+                      onChange={(e) => handleClienteSelect(e.target.value)}
+                    >
+                      <option value="">— Selecionar ou preencher manualmente —</option>
+                      {clientes.map((c) => (
+                        <option key={c.id} value={c.id}>{c.nome} (NIF: {c.nif})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Nome do Cliente *</label>
+                    <input className={inputCls} value={form.cliente} onChange={(e) => setF('cliente', e.target.value)} placeholder="Nome completo ou empresa" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>NIF do Cliente</label>
+                    <input className={inputCls} value={form.nifCliente} onChange={(e) => setF('nifCliente', e.target.value)} placeholder="123 456 789" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Telefone</label>
+                    <input className={inputCls} value={form.telefoneCliente} onChange={(e) => setF('telefoneCliente', e.target.value)} placeholder="9XX XXX XXX" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Email</label>
+                    <input className={inputCls} value={form.emailCliente} onChange={(e) => setF('emailCliente', e.target.value)} placeholder="email@exemplo.pt" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className={labelCls}>Morada da Obra (para IVA 6%)</label>
+                    <input className={inputCls} value={form.enderecoObra} onChange={(e) => setF('enderecoObra', e.target.value)} placeholder="Rua, número, código postal, localidade" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Obra */}
+              <div className={sectionCls}>
+                <h3 className="text-sm font-bold text-slate-700 pb-1 border-b border-slate-200">Detalhes da Obra</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Tipo de Trabalho *</label>
+                    <select className={inputCls} value={form.tipoTrabalho} onChange={(e) => setF('tipoTrabalho', e.target.value)}>
+                      {Object.entries(TIPOS_TRABALHO).map(([k, v]) => (
+                        <option key={k} value={k}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Metragem (m²) *</label>
+                    <input type="number" step="0.01" min="0" className={inputCls} value={form.metragem || ''} onChange={(e) => setF('metragem', parseFloat(e.target.value) || 0)} placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Fator Desperdício (%)</label>
+                    <input type="number" step="1" min="0" max="30" className={inputCls} value={form.fatorDesperdicio} onChange={(e) => setF('fatorDesperdicio', parseFloat(e.target.value) || 0)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Taxa IVA</label>
+                    <select className={inputCls} value={form.taxaIVA} onChange={(e) => setF('taxaIVA', parseInt(e.target.value))}>
+                      <option value={6}>6% — Reabilitação Habitação (Lista I CIVA)</option>
+                      <option value={23}>23% — Taxa Normal / Obra Nova</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Deslocamento (km)</label>
+                    <input type="number" step="0.1" min="0" className={inputCls} value={form.deslocamento || ''} onChange={(e) => setF('deslocamento', parseFloat(e.target.value) || 0)} placeholder="0" />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelCls}>Notas / Observações</label>
+                  <textarea className={`${inputCls} resize-none`} rows={2} value={form.notas} onChange={(e) => setF('notas', e.target.value)} placeholder="Condições especiais, observações..." />
+                </div>
+              </div>
+
+              {/* Materiais */}
+              <div className={sectionCls}>
+                <div className="flex items-center justify-between pb-1 border-b border-slate-200">
+                  <h3 className="text-sm font-bold text-slate-700">Materiais</h3>
+                  <div className="flex items-center gap-2">
+                    {hasRendimentos && form.metragem > 0 && (
+                      <button
+                        onClick={handleAutoCalc}
+                        className="flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors border border-emerald-200"
+                        title={`Calcular automaticamente para ${form.metragem} m²`}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M12 7h.01M15 7h.01M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
+                        </svg>
+                        Auto-calcular ({form.metragem} m²)
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowAddItem(!showAddItem)}
+                      className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Adicionar
+                    </button>
+                  </div>
+                </div>
+
+                {showAddItem && (
+                  <div className="bg-white rounded-lg border border-blue-200 p-3 space-y-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-2">
+                        <label className={labelCls}>Material</label>
+                        <select className={inputCls} value={selMat} onChange={(e) => setSelMat(e.target.value)}>
+                          {categorias.map((cat) => (
+                            <optgroup key={cat} label={cat}>
+                              {precosConfig.materiais
+                                .filter((m) => m.categoria === cat)
+                                .map((m) => (
+                                  <option key={m.id} value={m.id}>
+                                    {m.nome} ({m.preco.toFixed(2)}€/{m.unidade})
+                                  </option>
+                                ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className={labelCls}>Qtd ({matSel?.unidade})</label>
+                        <input type="number" step="0.01" min="0.01" className={inputCls} value={qty} onChange={(e) => setQty(parseFloat(e.target.value) || 0)} />
+                      </div>
+                    </div>
+                    {matSel && (
+                      <p className="text-xs text-slate-500">
+                        Subtotal: <strong>{(matSel.preco * qty).toFixed(2)}€</strong>
+                      </p>
+                    )}
+                    <div className="flex gap-2">
+                      <button onClick={handleAddItem} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                        Adicionar
+                      </button>
+                      <button onClick={() => setShowAddItem(false)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {itens.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-4">Nenhum material adicionado</p>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-slate-500 px-2 pb-1">
+                      <div className="col-span-5">Material</div>
+                      <div className="col-span-2 text-right">Qtd</div>
+                      <div className="col-span-2 text-right">P.Unit.</div>
+                      <div className="col-span-2 text-right">Total</div>
+                      <div className="col-span-1"></div>
+                    </div>
+                    {itens.map((item) => (
+                      <div key={item.id} className="grid grid-cols-12 gap-2 items-center bg-white rounded-lg px-2 py-2 border border-slate-100 text-sm">
+                        <div className="col-span-5 text-slate-800 font-medium text-xs leading-tight">{item.descricao}</div>
+                        <div className="col-span-2 text-right text-slate-600 text-xs">{item.quantidade} {item.unidade}</div>
+                        <div className="col-span-2 text-right text-slate-600 text-xs">{item.preco.toFixed(2)}€</div>
+                        <div className="col-span-2 text-right font-semibold text-slate-800 text-xs">{item.subtotal.toFixed(2)}€</div>
+                        <div className="col-span-1 flex justify-end">
+                          <button onClick={() => setItens((prev) => prev.filter((i) => i.id !== item.id))} className="text-red-400 hover:text-red-600">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-            <div>
-              <p className="text-gray-600">Deslocamento:</p>
-              <p className="font-bold text-lg">{totais.custoDeslocamento.toFixed(2)}€</p>
-            </div>
-            <div>
-              <p className="text-gray-600">Total Antes de Margem:</p>
-              <p className="font-bold text-lg">{totais.precoAntesDaMargemLucro.toFixed(2)}€</p>
-            </div>
-            <div>
-              <p className="text-gray-600">Valor Lucrado ({precosConfig.margem}%):</p>
-              <p className="font-bold text-lg text-green-600">{totais.valorLucrado.toFixed(2)}€</p>
-            </div>
-            <div className="col-span-2 pt-4 border-t border-blue-300">
-              <p className="text-gray-600">Preço Líquido para Cliente:</p>
-              <p className="font-bold text-2xl text-green-600">
-                {totais.precoLiquidoCliente.toFixed(2)}€
-              </p>
+
+            {/* Right column - Resumo */}
+            <div className="space-y-4">
+              <div className="bg-slate-800 rounded-xl p-4 text-white sticky top-0">
+                <h3 className="text-sm font-bold text-slate-300 mb-3 pb-2 border-b border-slate-700">Resumo do Orçamento</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between text-slate-400">
+                    <span>Materiais</span>
+                    <span className="text-white">{t.subtotalMateriais.toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between text-slate-400">
+                    <span>Mão-de-obra</span>
+                    <span className="text-white">{t.maoDeObraTotal.toFixed(2)}€</span>
+                  </div>
+                  {form.deslocamento > 0 && (
+                    <div className="flex justify-between text-slate-400">
+                      <span>Deslocamento</span>
+                      <span className="text-white">{t.custoDeslocamento.toFixed(2)}€</span>
+                    </div>
+                  )}
+                  <div className="border-t border-slate-700 pt-2 flex justify-between text-slate-300">
+                    <span>Custo total</span>
+                    <span>{t.precoAntesDaMargemLucro.toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between text-green-400">
+                    <span>Margem ({precosConfig.margem}%)</span>
+                    <span>+{t.valorLucrado.toFixed(2)}€</span>
+                  </div>
+                  <div className="border-t border-slate-700 pt-2 flex justify-between text-slate-200 font-semibold">
+                    <span>Subtotal s/ IVA</span>
+                    <span>{t.precoSemIVA.toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between text-slate-400">
+                    <span>IVA ({form.taxaIVA}%)</span>
+                    <span>{t.valorIVA.toFixed(2)}€</span>
+                  </div>
+                  <div className="border-t border-slate-600 pt-2 mt-1">
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-slate-300 text-sm">Total c/ IVA</span>
+                      <span className="text-2xl font-bold text-white">{t.precoComIVA.toFixed(2)}€</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {form.taxaIVA === 6 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                  <p className="text-xs text-blue-700 font-semibold">IVA 6% — Verba 2.27</p>
+                  <p className="text-xs text-blue-600 mt-1">Taxa reduzida ao abrigo da Lista I anexa ao CIVA — obras de reabilitação de imóveis habitacionais.</p>
+                </div>
+              )}
+
+              {err && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                  <p className="text-xs text-red-700">{err}</p>
+                </div>
+              )}
+
+              <button
+                onClick={handleSave}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+              >
+                {orcamentoExistente ? 'Guardar Alterações' : 'Criar Orçamento'}
+              </button>
+              <button
+                onClick={onClose}
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl transition-colors text-sm"
+              >
+                Cancelar
+              </button>
             </div>
           </div>
-        </div>
-
-        <div className="flex gap-4">
-          <button
-            onClick={handleSave}
-            className="flex-1 bg-green-500 text-white px-4 py-3 rounded-lg hover:bg-green-600 transition font-semibold"
-          >
-            Guardar Orçamento
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 bg-gray-500 text-white px-4 py-3 rounded-lg hover:bg-gray-600 transition font-semibold"
-          >
-            Cancelar
-          </button>
         </div>
       </div>
     </div>
