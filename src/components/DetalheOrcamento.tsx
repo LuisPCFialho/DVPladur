@@ -32,10 +32,10 @@ export default function DetalheOrcamento({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[95vh] flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-50 flex flex-col lg:items-center lg:justify-center lg:p-4 lg:bg-black/60 lg:backdrop-blur-sm">
+      <div className="bg-white flex flex-col h-full lg:h-auto lg:rounded-2xl w-full lg:max-w-3xl lg:max-h-[95vh] lg:shadow-2xl">
         {/* Toolbar */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-200 print:hidden">
+        <div className="flex items-center justify-between px-4 py-3 lg:p-4 border-b border-slate-200 print:hidden flex-shrink-0">
           <div className="flex items-center gap-2">
             <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${orcamento.status === 'rascunho' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
               {orcamento.status === 'rascunho' ? 'Rascunho' : 'Finalizado'}
@@ -73,7 +73,7 @@ export default function DetalheOrcamento({
 
         {/* Printable content */}
         <div className="flex-1 overflow-auto" id="print-area">
-          <div className="p-6">
+          <div className="p-4 lg:p-6">
             {/* Header */}
             <div className="flex justify-between items-start mb-6">
               <div>
@@ -96,7 +96,7 @@ export default function DetalheOrcamento({
             </div>
 
             {/* Client + Work */}
-            <div className="grid grid-cols-2 gap-4 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 lg:mb-5">
               <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Cliente</p>
                 <p className="font-bold text-slate-800">{orcamento.cliente}</p>
@@ -121,10 +121,26 @@ export default function DetalheOrcamento({
               </div>
             </div>
 
-            {/* Materials table */}
-            <div className="mb-5">
+            {/* Materials */}
+            <div className="mb-4 lg:mb-5">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Materiais</p>
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
+              {/* Mobile: cards */}
+              <div className="sm:hidden space-y-2">
+                {orcamento.itens.map((item) => {
+                  const mat = precosConfig.materiais.find((m) => m.id === item.materialId);
+                  return (
+                    <div key={item.id} className="flex items-start justify-between gap-2 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-200">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800 leading-tight">{item.descricao || mat?.nome || '—'}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{item.quantidade} {item.unidade || mat?.unidade} × {item.preco.toFixed(2)}€</p>
+                      </div>
+                      <span className="text-sm font-bold text-slate-800 flex-shrink-0">{item.subtotal.toFixed(2)}€</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Desktop: table */}
+              <div className="hidden sm:block border border-slate-200 rounded-xl overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-100">
                     <tr>
@@ -154,7 +170,7 @@ export default function DetalheOrcamento({
             </div>
 
             {/* Totals */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 {orcamento.notas && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
@@ -208,7 +224,7 @@ export default function DetalheOrcamento({
         </div>
 
         {/* Footer actions */}
-        <div className="flex gap-3 p-4 border-t border-slate-200 print:hidden">
+        <div className="flex gap-3 p-4 border-t border-slate-200 print:hidden flex-shrink-0">
           {orcamento.status === 'rascunho' && (
             <button
               onClick={handleFinalize}
